@@ -19,9 +19,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Railway CLI
-        run: curl -fsSL https://railway.app/install.sh | sh
+        run: curl -fsSL https://railway.app/install.sh | bash
+        shell: bash
 
       - name: Deploy to Railway
-        run: railway up --service ${{ vars.RAILWAY_SERVICE_ID }} --detach
+        run: |
+          export PATH="$HOME/.railway/bin:$PATH"
+          railway up --service ${{ vars.RAILWAY_SERVICE_ID }} --detach
+        shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
