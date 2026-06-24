@@ -126,22 +126,42 @@ def seed():
 
     db.refresh(doctor)
 
-    # Слоты — только если у врача ещё нет расписания
-    existing_slots = db.query(ScheduleSlot).filter(ScheduleSlot.doctor_id == doctor.doctor_id).count()
-    if existing_slots == 0:
-        base = datetime(2026, 6, 15, 9, 0, tzinfo=timezone.utc)
+    # Слоты: пересоздать если все существующие свободные слоты уже в прошлом
+    now_utc = datetime.now(timezone.utc)
+    future_free = (
+        db.query(ScheduleSlot)
+        .filter(
+            ScheduleSlot.doctor_id == doctor.doctor_id,
+            ScheduleSlot.status == SlotStatus.FREE,
+            ScheduleSlot.start_time > now_utc,
+        )
+        .count()
+    )
+    if future_free == 0:
+        # Начало следующего рабочего дня (завтра или сегодня если до 8:00)
+        base_day = now_utc.date()
+        if now_utc.hour >= 8:
+            base_day = base_day + timedelta(days=1)
+        base = datetime(base_day.year, base_day.month, base_day.day, 9, 0, tzinfo=timezone.utc)
         for day_offset in range(14):
+            day = base + timedelta(days=day_offset)
+            if day.weekday() >= 5:  # пропустить субботу/воскресенье
+                continue
             for hour in (9, 10, 11, 12, 14, 15, 16):
-                start = base.replace(hour=hour) + timedelta(days=day_offset)
+                start = day.replace(hour=hour)
                 end = start + timedelta(minutes=30)
-                db.add(
-                    ScheduleSlot(
+                # не дублировать уже существующие слоты
+                exists = db.query(ScheduleSlot).filter(
+                    ScheduleSlot.doctor_id == doctor.doctor_id,
+                    ScheduleSlot.start_time == start,
+                ).first()
+                if not exists:
+                    db.add(ScheduleSlot(
                         doctor_id=doctor.doctor_id,
                         start_time=start,
                         end_time=end,
                         status=SlotStatus.FREE,
-                    )
-                )
+                    ))
         db.flush()
 
     # Демо-запись для Иванова — только если ещё нет

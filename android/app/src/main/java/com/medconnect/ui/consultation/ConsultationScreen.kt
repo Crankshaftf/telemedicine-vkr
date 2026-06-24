@@ -14,6 +14,7 @@ import com.medconnect.MedConnectApp
 import com.medconnect.data.model.ConsultationResponse
 import com.medconnect.ui.components.*
 import com.medconnect.util.formatDateTime
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 class ConsultationViewModel : ViewModel() {
@@ -26,8 +27,11 @@ class ConsultationViewModel : ViewModel() {
     fun load(appointmentId: Int) {
         viewModelScope.launch {
             isLoading = true
-            repo.getProfile().onSuccess { currentUserId = it.userId }
-            repo.getConsultation(appointmentId)
+            error = null
+            val profileJob = async { repo.getProfile() }
+            val consultationJob = async { repo.getConsultation(appointmentId) }
+            profileJob.await().onSuccess { currentUserId = it.userId }
+            consultationJob.await()
                 .onSuccess { consultation = it; error = null }
                 .onFailure { error = it.message }
             isLoading = false

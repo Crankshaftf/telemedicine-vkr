@@ -1,7 +1,17 @@
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, PlainSerializer
+
+
+def _dt_to_utc_z(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# Use this alias for all datetime fields in response schemas
+UtcDatetime = Annotated[datetime, PlainSerializer(_dt_to_utc_z, return_type=str, when_used="json")]
 
 
 # --- Auth ---
@@ -75,8 +85,8 @@ class DoctorResponse(BaseModel):
 class SlotResponse(BaseModel):
     slot_id: int
     doctor_id: int
-    start_time: datetime
-    end_time: datetime
+    start_time: UtcDatetime
+    end_time: UtcDatetime
     status: str
 
     model_config = {"from_attributes": True}
@@ -98,13 +108,13 @@ class AppointmentResponse(BaseModel):
     doctor_name: str
     specialization: str
     slot_id: int
-    start_time: datetime
-    end_time: datetime
+    start_time: UtcDatetime
+    end_time: UtcDatetime
     complaint: str
     symptoms: Optional[str] = None
     comment: Optional[str] = None
     status: str
-    created_at: datetime
+    created_at: UtcDatetime
     has_consultation: bool = False
 
 
@@ -135,7 +145,7 @@ class FileResponse(BaseModel):
     file_id: int
     file_name: str
     file_type: str
-    uploaded_at: datetime
+    uploaded_at: UtcDatetime
 
     model_config = {"from_attributes": True}
 
@@ -147,7 +157,7 @@ class MessageResponse(BaseModel):
     sender_id: int
     sender_name: str
     text: str
-    created_at: datetime
+    created_at: UtcDatetime
 
     model_config = {"from_attributes": True}
 
@@ -170,7 +180,7 @@ class ConsultationResponse(BaseModel):
     result_text: Optional[str] = None
     preliminary_assessment: Optional[str] = None
     needs_in_person: bool = False
-    created_at: datetime
+    created_at: UtcDatetime
     messages: list[MessageResponse] = []
 
 
@@ -181,7 +191,7 @@ class NotificationResponse(BaseModel):
     type: str
     text: str
     status: str
-    created_at: datetime
+    created_at: UtcDatetime
 
     model_config = {"from_attributes": True}
 

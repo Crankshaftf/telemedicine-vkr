@@ -42,19 +42,20 @@ def get_doctor_schedule(
     date_to: date | None = Query(None),
     db: Session = Depends(get_db),
 ):
+    from datetime import datetime, time, timezone
     doctor = db.get(Doctor, doctor_id)
     if doctor is None:
         raise HTTPException(status_code=404, detail="Врач не найден")
 
+    now_utc = datetime.now(timezone.utc)
     query = db.query(ScheduleSlot).filter(
         ScheduleSlot.doctor_id == doctor_id,
         ScheduleSlot.status == SlotStatus.FREE,
+        ScheduleSlot.start_time > now_utc,
     )
     if date_from:
-        from datetime import datetime, time, timezone
         query = query.filter(ScheduleSlot.start_time >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
     if date_to:
-        from datetime import datetime, time, timezone
         query = query.filter(ScheduleSlot.start_time <= datetime.combine(date_to, time.max, tzinfo=timezone.utc))
 
     return query.order_by(ScheduleSlot.start_time).all()
