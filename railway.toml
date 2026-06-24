@@ -1,0 +1,17 @@
+[build]
+  builder = "DOCKERFILE"
+  dockerfilePath = "backend/Dockerfile"
+  buildContext = "."
+  watchPatterns = ["backend/**", "admin-web/**", "download-web/**"]
+
+[deploy]
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 3
+
+[[services]]
+  name = "medconnect-api"
+
+  [services.variables]
+    ADMIN_PANEL_DIR = "/app/admin-web"
+    DOWNLOAD_DIR    = "/app/download-web"
+    GITHUB_RELEASE_URL = "https://github.com/Crankshaftf/telemedicine-vkr/releases/latest/download/MedConnect.apk"
