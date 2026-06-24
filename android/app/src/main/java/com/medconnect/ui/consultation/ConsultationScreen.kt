@@ -83,6 +83,19 @@ fun ConsultationScreen(
         ) {
             when {
                 viewModel.isLoading -> LoadingState()
+                viewModel.consultation == null && !viewModel.error.isNullOrBlank() -> {
+                    Column(
+                        Modifier.fillMaxSize().padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    ) {
+                        ErrorBanner(viewModel.error)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { viewModel.load(appointmentId) }) {
+                            Text("Повторить")
+                        }
+                    }
+                }
                 messages.isEmpty() -> EmptyState("Начните диалог с врачом")
                 else -> LazyColumn(
                     state = listState,
@@ -100,7 +113,7 @@ fun ConsultationScreen(
                     }
                 }
             }
-            if (!viewModel.error.isNullOrBlank()) {
+            if (!viewModel.error.isNullOrBlank() && viewModel.consultation != null) {
                 Box(
                     Modifier
                         .align(androidx.compose.ui.Alignment.TopCenter)

@@ -19,7 +19,7 @@ fun Throwable.toUserMessage(): String {
         is UnknownHostException, is ConnectException ->
             "Не удалось подключиться к серверу. Запустите backend (порт 8000) и проверьте URL в настройках."
         is SocketTimeoutException ->
-            "Превышено время ожидания. Проверьте сеть."
+            "Превышено время ожидания. Сервер не ответил за 60 секунд — попробуйте ещё раз."
         is IOException ->
             "Ошибка сети: ${message ?: "нет соединения"}"
         else -> message ?: "Неизвестная ошибка"
