@@ -1,0 +1,28 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/data/
+backend/*.db
+!backend/uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android (будущий этап)
+android/.gradle/
+android/local.properties
+android/**/build/
+MedConnect.apk
+download-web/MedConnect.apk
+backend/downloads/MedConnect.apk
+.public-url
+tools/cloudflared.exe
+tunnel.log
+
+# OS
+.DS_Store
+Thumbs.db

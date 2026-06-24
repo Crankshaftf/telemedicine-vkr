@@ -1,0 +1,6 @@
+# Permanent APK download link (GitHub Releases)
+# After first release, replace with your repo URL:
+#
+# https://github.com/YOUR_USER/telemedicine-vkr/releases/latest/download/MedConnect.apk
+#
+# Or run: .\scripts\publish-github.ps1

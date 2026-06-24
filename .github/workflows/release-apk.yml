@@ -1,0 +1,85 @@
+name: Build and Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Backend API URL (with trailing slash), e.g. https://api.example.com/"
+        required: true
+        type: string
+      tag:
+        description: "Release tag, e.g. v1.0"
+        required: false
+        default: v1.0
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve API URL
+        id: api
+        run: |
+          if [ -n "${{ github.event.inputs.api_url }}" ]; then
+            URL="${{ github.event.inputs.api_url }}"
+          elif [ -n "${{ secrets.MEDCONNECT_API_URL }}" ]; then
+            URL="${{ secrets.MEDCONNECT_API_URL }}"
+          else
+            echo "Set api_url in workflow_dispatch or MEDCONNECT_API_URL secret"
+            exit 1
+          fi
+          case "$URL" in
+            */) ;;
+            *) URL="${URL}/" ;;
+          esac
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        working-directory: android
+        env:
+          MEDCONNECT_API_URL: ${{ steps.api.outputs.url }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Prepare release asset
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk MedConnect.apk
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=v1.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: MedConnect ${{ steps.tag.outputs.name }}
+          body: |
+            Android app for MedConnect telemedicine demo.
+
+            API server: ${{ steps.api.outputs.url }}
+
+            Test login: user@test.ru / user123
+          files: MedConnect.apk
+          make_latest: true

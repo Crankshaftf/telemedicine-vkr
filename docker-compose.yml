@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: telemedicine-db
+    environment:
+      POSTGRES_USER: telemed
+      POSTGRES_PASSWORD: telemed123
+      POSTGRES_DB: telemedicine
+    ports:
+      - "15432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telemed -d telemedicine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: telemedicine-api
+    environment:
+      DATABASE_URL: postgresql://telemed:telemed123@db:5432/telemedicine
+      SECRET_KEY: dev-network-secret-key
+      UPLOAD_DIR: uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./admin-web:/app/admin-web:ro
+      - ./download-web:/app/download-web:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

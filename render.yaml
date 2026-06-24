@@ -1,0 +1,26 @@
+# Optional: deploy to Render.com (free tier for demo)
+# Dashboard: https://dashboard.render.com -> New -> Blueprint
+
+services:
+  - type: web
+    name: medconnect-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medconnect-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PANEL_DIR
+        value: /app/admin-web
+    healthCheckPath: /health
+
+databases:
+  - name: medconnect-db
+    plan: free
+    databaseName: telemedicine
+    user: telemed
