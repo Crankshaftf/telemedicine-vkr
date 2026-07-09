@@ -14,7 +14,10 @@ import com.medconnect.MedConnectApp
 import com.medconnect.data.model.ConsultationResponse
 import com.medconnect.ui.components.*
 import com.medconnect.util.formatDateTime
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class ConsultationViewModel : ViewModel() {
@@ -23,6 +26,8 @@ class ConsultationViewModel : ViewModel() {
     var currentUserId by mutableStateOf<Int?>(null)
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+
+    private var pollJob: Job? = null
 
     fun load(appointmentId: Int) {
         viewModelScope.launch {
@@ -38,6 +43,26 @@ class ConsultationViewModel : ViewModel() {
         }
     }
 
+    fun startPolling(appointmentId: Int) {
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(4000)
+                repo.getConsultation(appointmentId).onSuccess { fresh ->
+                    if (fresh.messages.size > (consultation?.messages?.size ?: 0)) {
+                        consultation = fresh
+                        error = null
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopPolling() {
+        pollJob?.cancel()
+        pollJob = null
+    }
+
     fun sendMessage(text: String) {
         val c = consultation ?: return
         viewModelScope.launch {
@@ -49,6 +74,11 @@ class ConsultationViewModel : ViewModel() {
                 .onFailure { error = it.message }
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPolling()
+    }
 }
 
 @Composable
@@ -57,7 +87,14 @@ fun ConsultationScreen(
     viewModel: ConsultationViewModel,
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(appointmentId) { viewModel.load(appointmentId) }
+    LaunchedEffect(appointmentId) {
+        viewModel.load(appointmentId)
+        viewModel.startPolling(appointmentId)
+    }
+    DisposableEffect(appointmentId) {
+        onDispose { viewModel.stopPolling() }
+    }
+
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val messages = viewModel.consultation?.messages ?: emptyList()
@@ -66,10 +103,11 @@ fun ConsultationScreen(
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
-    Box(Modifier.fillMaxSize().imePadding()) {
     MedScaffold(
         title = "Консультация",
         onBack = onBack,
+        modifier = Modifier.imePadding(),
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             ChatInputBar(
                 value = messageText,
@@ -130,5 +168,4 @@ fun ConsultationScreen(
             }
         }
     }
-    } // Box imePadding
 }

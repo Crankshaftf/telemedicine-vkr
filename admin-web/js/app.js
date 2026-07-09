@@ -275,6 +275,7 @@ const App = {
   },
 
   backToList() {
+    DoctorView.stopChatPoll();
     document.getElementById("detail-view").classList.add("hidden");
     document.getElementById("list-view").classList.remove("hidden");
     document.getElementById("topbar-back").classList.add("hidden");
@@ -283,6 +284,34 @@ const App = {
 };
 
 const DoctorView = {
+  _chatPollInterval: null,
+  _chatLastCount: 0,
+  _chatAppointmentId: null,
+
+  stopChatPoll() {
+    if (this._chatPollInterval) {
+      clearInterval(this._chatPollInterval);
+      this._chatPollInterval = null;
+    }
+    this._chatAppointmentId = null;
+  },
+
+  renderMessages(messages) {
+    const box = document.getElementById("chat-box");
+    if (!box) return;
+    const myId = App.profile.user_id;
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    box.innerHTML = messages.map((m) => {
+      const out = m.sender_id === myId;
+      return `<div class="chat-msg ${out ? "outgoing" : "incoming"}">
+        ${!out ? `<div class="sender">${m.sender_name}</div>` : ""}
+        <div>${m.text}</div>
+        <div class="time">${fmtDate(m.created_at)}</div>
+      </div>`;
+    }).join("") || "<p style='color:#5a6472;font-size:0.9rem'>Нет сообщений</p>";
+    if (atBottom || messages.length === 0) box.scrollTop = box.scrollHeight;
+  },
+
   async loadAppointments() {
     const tbody = document.getElementById("appointments-table-body");
     tbody.innerHTML = "<tr><td colspan='6'>Загрузка...</td></tr>";
@@ -314,30 +343,47 @@ const DoctorView = {
   },
 
   setupChat(appt) {
-    const box = document.getElementById("chat-box");
-    const myId = App.profile.user_id;
-    const messages = appt.consultation?.messages || [];
-    box.innerHTML = messages.map((m) => {
-      const outgoing = m.sender_id === myId;
-      return `
-      <div class="chat-msg ${outgoing ? "outgoing" : "incoming"}">
-        ${!outgoing ? `<div class="sender">${m.sender_name}</div>` : ""}
-        <div>${m.text}</div>
-        <div class="time">${fmtDate(m.created_at)}</div>
-      </div>`;
-    }).join("") || "<p style='color:#5a6472;font-size:0.9rem'>Нет сообщений</p>";
-    box.scrollTop = box.scrollHeight;
+    this.stopChatPoll();
+    this._chatAppointmentId = appt.appointment_id;
+    this._chatLastCount = (appt.consultation?.messages || []).length;
+    this.renderMessages(appt.consultation?.messages || []);
+
+    // Автообновление: каждые 4 секунды проверяем новые сообщения
+    this._chatPollInterval = setInterval(async () => {
+      if (!document.getElementById("chat-box")) { this.stopChatPoll(); return; }
+      try {
+        const fresh = await Api.getConsultation(this._chatAppointmentId);
+        if (fresh.messages.length > this._chatLastCount) {
+          this._chatLastCount = fresh.messages.length;
+          this.renderMessages(fresh.messages);
+        }
+      } catch (_) {}
+    }, 4000);
 
     document.getElementById("chat-send-btn").addEventListener("click", async () => {
       const input = document.getElementById("chat-input");
       const text = input.value.trim();
       if (!text) return;
+      const btn = document.getElementById("chat-send-btn");
+      btn.disabled = true;
       try {
-        await Api.sendMessage(appt.consultation.consultation_id, text);
+        const msg = await Api.sendMessage(appt.consultation.consultation_id, text);
         input.value = "";
-        App.openAppointment(appt.appointment_id);
+        this._chatLastCount++;
+        // Добавляем сообщение сразу без перезагрузки страницы
+        const box = document.getElementById("chat-box");
+        const placeholder = box.querySelector("p");
+        if (placeholder) box.innerHTML = "";
+        box.insertAdjacentHTML("beforeend", `
+          <div class="chat-msg outgoing">
+            <div>${msg.text}</div>
+            <div class="time">${fmtDate(msg.created_at)}</div>
+          </div>`);
+        box.scrollTop = box.scrollHeight;
       } catch (err) {
         alert(err.message);
+      } finally {
+        btn.disabled = false;
       }
     });
   },
