@@ -107,13 +107,12 @@ fun ConsultationScreen(
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
-    // Весь экран — Column с imePadding: когда открывается клавиатура,
-    // Column сжимается снизу и ChatInputBar прижимается к клавиатуре.
+    // ime.union(navigationBars) берёт максимум инсета: нав.бар когда клавиатура закрыта,
+    // высоту клавиатуры когда открыта — без двойного счёта.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding()
-            .navigationBarsPadding(),
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
     ) {
         // Топбар — визуально повторяет MedScaffold
         TopAppBar(
