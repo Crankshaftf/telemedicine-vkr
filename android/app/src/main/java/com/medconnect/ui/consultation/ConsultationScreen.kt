@@ -4,8 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -81,6 +84,7 @@ class ConsultationViewModel : ViewModel() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConsultationScreen(
     appointmentId: Int,
@@ -103,26 +107,34 @@ fun ConsultationScreen(
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
-    MedScaffold(
-        title = "Консультация",
-        onBack = onBack,
-        modifier = Modifier.imePadding(),
-        contentWindowInsets = WindowInsets(0),
-        bottomBar = {
-            ChatInputBar(
-                value = messageText,
-                onValueChange = { messageText = it },
-                onSend = {
-                    viewModel.sendMessage(messageText.trim())
-                    messageText = ""
-                },
-            )
-        },
-    ) { padding ->
+    // Весь экран — Column с imePadding: когда открывается клавиатура,
+    // Column сжимается снизу и ChatInputBar прижимается к клавиатуре.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .navigationBarsPadding(),
+    ) {
+        // Топбар — визуально повторяет MedScaffold
+        TopAppBar(
+            title = { Text("Консультация", maxLines = 1, style = MaterialTheme.typography.titleLarge) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+                navigationIconContentColor = MaterialTheme.colorScheme.primary,
+            ),
+        )
+
+        // Список сообщений занимает всё свободное место
         Box(
-            Modifier
-                .padding(padding)
-                .fillMaxSize(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
         ) {
             when {
                 viewModel.isLoading -> LoadingState()
@@ -130,13 +142,11 @@ fun ConsultationScreen(
                     Column(
                         Modifier.fillMaxSize().padding(24.dp),
                         verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         ErrorBanner(viewModel.error)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { viewModel.load(appointmentId) }) {
-                            Text("Повторить")
-                        }
+                        Button(onClick = { viewModel.load(appointmentId) }) { Text("Повторить") }
                     }
                 }
                 messages.isEmpty() -> EmptyState("Начните диалог с врачом")
@@ -159,7 +169,7 @@ fun ConsultationScreen(
             if (!viewModel.error.isNullOrBlank() && viewModel.consultation != null) {
                 Box(
                     Modifier
-                        .align(androidx.compose.ui.Alignment.TopCenter)
+                        .align(Alignment.TopCenter)
                         .padding(16.dp)
                         .fillMaxWidth(),
                 ) {
@@ -167,5 +177,15 @@ fun ConsultationScreen(
                 }
             }
         }
+
+        // Поле ввода — всегда внизу Column, прижато к клавиатуре
+        ChatInputBar(
+            value = messageText,
+            onValueChange = { messageText = it },
+            onSend = {
+                viewModel.sendMessage(messageText.trim())
+                messageText = ""
+            },
+        )
     }
 }
