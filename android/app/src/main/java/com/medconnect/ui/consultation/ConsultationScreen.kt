@@ -66,6 +66,7 @@ fun ConsultationScreen(
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
+    Box(Modifier.fillMaxSize().imePadding()) {
     MedScaffold(
         title = "Консультация",
         onBack = onBack,
@@ -129,4 +130,5 @@ fun ConsultationScreen(
             }
         }
     }
+    } // Box imePadding
 }

@@ -8,12 +8,14 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import Base, engine
 from app.routers import admin, appointments, auth, consultations, doctors, download, files, notifications, reports
+from app.startup import run_seed
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    run_seed()
     yield
 
 
